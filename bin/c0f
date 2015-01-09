@@ -7,38 +7,96 @@
 
 require 'optparse'
 require 'methadone'
+require 'formatador'
+require 'json'
 require 'c0f.rb'
 
 class App
   include Methadone::Main
   include Methadone::CLILogging
 
+  # Main c0f routine
   main do # Add args you want: |like,so|
-    # your program code here
-    # You can access CLI options via
-    # the options Hash
+    @stat = C0f::CANPacketStat.new
+    candb = nil
+    if options[:fpdb] then
+      candb = C0f::CANFingerprintDB.new(options[:fpdb])
+      puts "Loaded #{candb.count} fingerprints from DB"
+    end
+    if not options["add-fp"].nil? then
+      if candb.nil? then
+        puts "Can not add a fingerprint unless a DB is specified"
+        exit 5
+      else
+        if not File.exists? options["add-fp"] then
+          puts "Fingerprint JSON file not found"
+          exit 6
+        else
+          fp = JSON.parse(File.read(options["add-fp"]))
+          r = candb.match_json(fp)
+          row = r.next
+          if row then
+            puts "Base Fingerprint already exists. TODO: Added common ID matching/inserting"
+            # TODO: add a fuzzy match and an exact match function.  If not exact and we don't have the
+            # same make, model, year and trim then insert the slightly different one
+            exit 10
+          else
+             id = candb.insert_json(fp)
+             puts "Successfully inserted fingprint (#{id})" if id
+          end
+        end
+      end
+    end
+    if options[:logfile] then
+      log = options[:logfile]
+      if File.read log then
+        lines = File.readlines(log)
+        progress = Formatador::ProgressBar.new(lines.count) { |b| 
+          b.opts[:color] = "green"
+          b.opts[:started_at] = Time.now
+          b.opts[:label] = "Loading Packets..." 
+        } if options[:progress]
+        lines.each do |line|
+          progress.increment if options[:progress]
+          pkt = C0f::CANPacket.new
+          @stat.add pkt if pkt.parse line
+        end
+      else
+        puts "Could not read logfile #{log}"
+        exit 3
+      end
+    end
+    puts @stat if @stat.pkt_count > 0 and options["print-stats"]
+    if options["print-fp"] and options[:logfile] then
+      if @stat.pkt_count < 2000 then
+         puts "Fingerprinting requires at least 2000 packets"
+         exit 4
+      end
+      fp = C0f::CANFingerprint.new(@stat)
+      if candb then
+        r = candb.match_json(fp.to_json)
+        row = r.next
+        if row then
+          fp.make = row["make"]
+          fp.model = row["model"]
+          fp.year = row["year"]
+          fp.trim = row["trim"]
+        end
+      end
+      puts fp.to_json
+    end
   end
-
-  # supplemental methods here
-
-  # Declare command-line interface here
 
   description "CAN Bus Passive Make/Model analyzer"
   
-  # Accept flags via:
-  # on("--flag VAL","Some flag")
-  # options[flag] will contain VAL
-  #
-  # Specify switches via:
-  # on("--[no-]switch","Some switch")
-  #
-  # Or, just call OptionParser methods on opts
-  #
-  # Require an argument
-  # arg :some_arg 
-  #
-  # # Make an argument optional
-  # arg :optional_arg, :optional
+  options["print-fp"] = true
+  options[:progress] = true
+  on("--logfile FILENAME", "CANDump logfile")
+  on("--print-stats", "Prints logfile stats (Default: No)")
+  on("--[no-]print-fp", "Print fingerprint info (Default: Yes)")
+  on("--[no-]progress", "Print a progress bar")
+  on("--add-fp FINGERPRINT", "Add a JSON fingerprint from a file to the DB")
+  on("--fpdb DB", "Location of saved fingerprint DB")
 
   version C0f::VERSION
 

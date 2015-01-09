@@ -1,6 +1,6 @@
 require 'test/unit'
 
-class TestSomething < Test::TestCase
+class TestSomething < Test::Unit::TestCase
   def test_truth
     assert true
   end
