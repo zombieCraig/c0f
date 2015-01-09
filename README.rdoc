@@ -1,0 +1,25 @@
+= c0f - CAN Bus passivel Make/Model fingerprint system
+
+Author::  Craig Smith (craig@theialabs.com)
+Copyright:: Copyright (c) 2015 Craig Smith
+
+
+Monitors the CAN Bus traffic (or logfile) to detect differences (fingerprints)
+between different Makes and Models.  These differences are in:
+
+* Signal IDs
+* Signal Intervals
+* DLC Size
+* Padding values
+
+== Links
+
+* {Source on Github}[LINK TO GITHUB]
+* RDoc[LINK TO RDOC.INFO]
+
+== Install
+
+== Examples
+
+== Contributing
+
