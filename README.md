@@ -29,6 +29,15 @@ Run the app
 
 $ bundle exec bin/c0f --help
 
+To install the app you should build the gem first
+
+$ gem build c0f.gemspec
+$ gem install ./c0f-0.0.1
+
+Then it will just work from the command line
+
+$ c0f --help
+
 == Using c0f
 
 First you will want to use candump from can-utils (on linux) to record some CAN traffic from
