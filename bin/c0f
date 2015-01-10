@@ -17,11 +17,12 @@ class App
 
   # Main c0f routine
   main do # Add args you want: |like,so|
+    options[:progress] = false if options[:quiet] == true
     @stat = C0f::CANPacketStat.new
     candb = nil
     if options[:fpdb] then
       candb = C0f::CANFingerprintDB.new(options[:fpdb])
-      puts "Loaded #{candb.count} fingerprints from DB"
+      puts "Loaded #{candb.count} fingerprints from DB" if not options[:quiet]
     end
     if not options["add-fp"].nil? then
       if candb.nil? then
@@ -33,6 +34,10 @@ class App
           exit 6
         else
           fp = JSON.parse(File.read(options["add-fp"]))
+          if fp["Make"] == "Unknown" then
+            puts "You must specify at *least* the make before adding the fingerprint to the DB"
+            exit 20
+          end
           r = candb.match_json(fp)
           row = r.next
           if row then
@@ -97,6 +102,8 @@ class App
   on("--[no-]progress", "Print a progress bar")
   on("--add-fp FINGERPRINT", "Add a JSON fingerprint from a file to the DB")
   on("--fpdb DB", "Location of saved fingerprint DB")
+  on("--quiet", "No output other than what is specified")
+  arg :candevice, :optional
 
   version C0f::VERSION
 
