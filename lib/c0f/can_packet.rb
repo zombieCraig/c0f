@@ -14,17 +14,26 @@ module C0f
     end
 
     # Parses CANDump line into CANPacket
-    # Expected format: (1398128223.815980) can0 13A#0000000000000028
     # @param line [String] CANDump line
     # @return [Boolean] true if successful
     def parse(line)
-      if line=~/\((\d+\.\d+)\) [sl|v]?can\d+ (\w+)#(\w+)/ then
+             # (1398128223.815980) can0 13A#0000000000000028
+      if line=~/\((\d+\.\d+)\) [s]?[l|v]?can\d+ (\w+)#(\w+)/ then
         @sent = $1.to_f
         @id = $2
         @data = $3.scan(/../).map(&:hex)
         @dlc = @data.size
         @count = 1
 	return true
+              # (1421010803.828887)  slcan0  128   [3]  A0 00 03
+      elsif line=~/\((\d+\.\d+)\)\s+[s]?[l|v]?can\d+\s+(\w+)\s+\[(\d+)\]  (.+)/ then
+        @sent = $1.to_f
+        @id = $2
+        @dlc = $3.to_i
+        @data = $4.gsub(' ','')
+        @data = @data.scan(/../).map(&:hex)
+        @count = 1
+        return true
       end
       false
     end

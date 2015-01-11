@@ -16,10 +16,14 @@ Copyright:: Copyright (c) 2015 Craig Smith
 
 == Requirements / Install
 
-Currently this toolset is a collection of Ruby tools but may unltimately be ported to C.
-We overkilled the ruby modules for this tool but the C one will be streamlined.  promise.
-
 Tested with ruby 2.1.5
+
+Easiest method to install
+
+$ gem install c0f
+$ c0f --help
+
+To work with the source you should follow the following instructions.
 
 Get dependencies with:
 
@@ -93,6 +97,10 @@ You can run some cucumber tests with:
 
 $ rake features
 
+Some unit tests also exist
+
+$ rake test
+
 == Fingerprint DBs
 
-Currently this repo does not include a fingerprint database .... yet
+Currently this repo does not include a fingerprint database .... yet.  See Open Garages mailing list.

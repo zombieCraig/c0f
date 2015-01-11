@@ -17,6 +17,8 @@ Feature: Analyze CAN Bus fingerprints
       |--add-fp|
       |--fpdb|
       |--quiet|
+      |--sample-size|
+      |--save-fp|
     And the banner should document that this app's arguments are:
       | candevice |
 

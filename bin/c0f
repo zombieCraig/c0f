@@ -16,10 +16,21 @@ class App
   include Methadone::CLILogging
 
   # Main c0f routine
-  main do # Add args you want: |like,so|
+  main do |candevice|
     options[:progress] = false if options[:quiet] == true
     @stat = C0f::CANPacketStat.new
     candb = nil
+    candump = nil
+    if candevice then
+      if options[:logfile] then
+        puts "You can specify logfile OR a candevice but not both"
+        exit 1
+      end
+    end
+    if not candevice and not options[:logfile] and not options["add-fp"] then
+      puts "Current use does not perform a valid action.  See --help"
+      exit -1
+    end
     if options[:fpdb] then
       candb = C0f::CANFingerprintDB.new(options[:fpdb])
       puts "Loaded #{candb.count} fingerprints from DB" if not options[:quiet]
@@ -52,6 +63,20 @@ class App
         end
       end
     end
+    if not candevice.nil? then
+      progress = Formatador::ProgressBar.new(options["sample-size"]) { |b| 
+        b.opts[:color] = "green"
+        b.opts[:started_at] = Time.now
+        b.opts[:label] = "Reading Packets..." 
+      } if options[:progress]
+      IO.popen "candump -t a -n #{options["sample-size"]} #{candevice}" do |pipe|
+       pipe.each do |line|
+          progress.increment if options[:progress]
+          pkt = C0f::CANPacket.new
+          @stat.add pkt if pkt.parse line
+        end
+      end
+    end
     if options[:logfile] then
       log = options[:logfile]
       if File.read log then
@@ -72,8 +97,8 @@ class App
       end
     end
     puts @stat if @stat.pkt_count > 0 and options["print-stats"]
-    if options["print-fp"] and options[:logfile] then
-      if @stat.pkt_count < 2000 then
+    if (options["print-fp"] or options["save-fp"]) and (options[:logfile] or candevice) then
+      if @stat.pkt_count < options["sample-size"] then
          puts "Fingerprinting requires at least 2000 packets"
          exit 4
       end
@@ -88,7 +113,10 @@ class App
           fp.trim = row["trim"]
         end
       end
-      puts fp.to_json
+      puts fp.to_json if options["print-fp"]
+      if options["save-fp"] then
+        File.open(options["save-fp"], "w") { |f| f.write fp.to_json }
+      end
     end
   end
 
@@ -96,6 +124,7 @@ class App
   
   options["print-fp"] = true
   options[:progress] = true
+  options["sample-size"] = 2000
   on("--logfile FILENAME", "CANDump logfile")
   on("--print-stats", "Prints logfile stats (Default: No)")
   on("--[no-]print-fp", "Print fingerprint info (Default: Yes)")
@@ -103,7 +132,9 @@ class App
   on("--add-fp FINGERPRINT", "Add a JSON fingerprint from a file to the DB")
   on("--fpdb DB", "Location of saved fingerprint DB")
   on("--quiet", "No output other than what is specified")
-  arg :candevice, :optional
+  on("--sample-size PACKETCOUNT", "The number of packets to process")
+  on("--save-fp FILE", "Saves the fingerprint to a file")
+  arg :candevice, "Launch candump on a given CAN device", :optional
 
   version C0f::VERSION
 
