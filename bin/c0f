@@ -31,6 +31,7 @@ class App
       puts "Current use does not perform a valid action.  See --help"
       exit -1
     end
+    @stat.pattern = options["find-pattern"] if options["find-pattern"]
     if options[:fpdb] then
       candb = C0f::CANFingerprintDB.new(options[:fpdb])
       puts "Loaded #{candb.count} fingerprints from DB" if not options[:quiet]
@@ -97,6 +98,16 @@ class App
       end
     end
     puts @stat if @stat.pkt_count > 0 and options["print-stats"]
+    if options["find-pattern"] then
+      s = "{ \"Matches\": [ "
+      matches = []
+      @stat.find_pattern_matches.each do |match|
+        matches << " { \"ID\": \"" + match["pkt"].id + "\", \"Position\": \"" + match["pos"].to_s + "\", \"Values\": [ \"" + match["values"][0].to_s + "\", \"" + match["values"][1].to_s + "\" ] }"
+      end
+      s += matches.join(',')
+      s += "] }"
+      puts s
+    end
     if (options["print-fp"] or options["save-fp"]) and (options[:logfile] or candevice) then
       if @stat.pkt_count < options["sample-size"] then
          puts "Fingerprinting requires at least 2000 packets"
@@ -134,6 +145,7 @@ class App
   on("--quiet", "No output other than what is specified")
   on("--sample-size PACKETCOUNT", "The number of packets to process")
   on("--save-fp FILE", "Saves the fingerprint to a file")
+  on("--find-pattern PATTERN", "Finds pattern in CAN data.  See docs.")
   arg :candevice, "Launch candump on a given CAN device", :optional
 
   version C0f::VERSION

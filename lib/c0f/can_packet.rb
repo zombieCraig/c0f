@@ -1,6 +1,6 @@
 module C0f
   class CANPacket
-    attr_accessor :id, :dlc, :data, :sent, :count, :interval, :sent_history, :deltas
+    attr_accessor :id, :dlc, :data, :sent, :count, :interval, :sent_history, :deltas, :byte_history
     def initialize
       @id = 0
       @dlc = 0
@@ -11,6 +11,7 @@ module C0f
       @interval = 0
       @sent_history = []
       @deltas = []
+      @byte_history = Hash.new # Hash of Hashes per byte location and data type
     end
 
     # Parses CANDump line into CANPacket
@@ -48,10 +49,39 @@ module C0f
       @sent = pkt.sent
     end
 
+    # Calculates the average delta
     # @return [Float] Average delta between sent intevals
     def avg_delta
       return 0.0 if @deltas.size == 0
       @deltas.inject{ |sum, el| sum + el }.to_f / @deltas.size
+    end
+
+    # records each byte and count of changes
+    # @param pkt [CANPacket] new packet of same ID
+    def record_byte_history(pkt)
+      return if not @id == pkt.id
+      (0..pkt.data.size-1).each do |i|
+        if not @byte_history.has_key? i then
+          @byte_history[i] = Hash.new
+          @byte_history[i][pkt.data[i]] = 1
+        else
+          if @byte_history[i].has_key? pkt.data[i] then
+            @byte_history[i][pkt.data[i]] += 1
+          else
+            @byte_history[i][pkt.data[i]] = 1
+          end
+        end
+      end
+    end
+
+    def to_s
+      s = "#{@id}#"
+      @data.each do |x|
+        b = x.to_s(16).upcase
+        b = "0" + b if b.size == 1
+        s += b
+      end
+      s
     end
   end
 end

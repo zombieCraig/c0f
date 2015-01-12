@@ -49,3 +49,18 @@ Then(/^the Make is "(.*?)" and the Model is "(.*?)" and the Year is "(.*?)" and 
   expect((fp["Make"] == make and fp["Model"] == model and fp["Year"] == year and fp["Trim"] == trim)).to be_truthy
 end
 
+Given(/^the pattern "(.*?)" at the logfile "(.*?)"$/) do |pattern, log_dest|
+  FileUtils.cp "test/sample-can.log", log_dest
+end
+
+Then(/^should return one pattern match$/) do
+  j = JSON.parse(all_output)
+  expect(j["Matches"].size).to eq(1)
+end
+
+Then(/^the identified signal ID should be "(.*?)" at position "(.*?)" with possibilities of "(.*?)"$/) do |id, pos, values|
+  j = JSON.parse(all_output)
+  values = values.split
+  first = j["Matches"][0]
+  expect((first["ID"] == id and first["Position"] == pos and first["Values"][0] = values[0] and first["Values"][1] == values[1])).to be_truthy
+end

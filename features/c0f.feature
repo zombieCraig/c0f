@@ -19,6 +19,7 @@ Feature: Analyze CAN Bus fingerprints
       |--quiet|
       |--sample-size|
       |--save-fp|
+      |--find-pattern|
     And the banner should document that this app's arguments are:
       | candevice |
 
@@ -42,4 +43,11 @@ Feature: Analyze CAN Bus fingerprints
     When I successfully run `c0f --fpdb /tmp/sample-fp.db --logfile /tmp/sample-can.log --quiet`
     Then the stdout should contain valid JSON
     And the Make is "Honda" and the Model is "Civic" and the Year is "2009" and the Trim is "Hybrid"
+
+  Scenario: Search through CAN data to identify a specific bit change pattern
+    Given the pattern "bBbBbbbB" at the logfile "/tmp/sample-can.log"
+    When I successfully run `c0f --find-pattern bBbBbbbB --logfile /tmp/sample-can.log --quiet --no-print-fp`
+    Then the stdout should contain valid JSON
+    And should return one pattern match
+    And the identified signal ID should be "095" at position "6" with possibilities of "0 1"
 
