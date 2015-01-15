@@ -50,15 +50,13 @@ class App
             puts "You must specify at *least* the make before adding the fingerprint to the DB"
             exit 20
           end
-          r = candb.match_json(fp)
-          row = r.next
-          if row then
+          orig_fp = fp.clone  # Make a copy because match_json is destructive
+          closest_fp = candb.match_json(fp)
+          if closest_fp["Confidence"] == 100 then
             puts "Base Fingerprint already exists. TODO: Added common ID matching/inserting"
-            # TODO: add a fuzzy match and an exact match function.  If not exact and we don't have the
-            # same make, model, year and trim then insert the slightly different one
             exit 10
           else
-             id = candb.insert_json(fp)
+             id = candb.insert_json(orig_fp)
              puts "Successfully inserted fingprint (#{id})" if id
           end
         end
@@ -115,14 +113,7 @@ class App
       end
       fp = C0f::CANFingerprint.new(@stat)
       if candb then
-        r = candb.match_json(fp.to_json)
-        row = r.next
-        if row then
-          fp.make = row["make"]
-          fp.model = row["model"]
-          fp.year = row["year"]
-          fp.trim = row["trim"]
-        end
+        fp = candb.match_json(fp.to_json)
       end
       puts fp.to_json if options["print-fp"]
       if options["save-fp"] then

@@ -57,6 +57,8 @@ SQL
     end
 
     # Try to find a match from a JSON fingerprint
+    # @param json [JSON] fingerprint JSON
+    # @return [Hash] Updates JSON Hash and adds "Confidence"
     def match_json(json)
       if json.is_a? Hash then
         fp = json
@@ -64,16 +66,53 @@ SQL
         fp = JSON.parse(json)
       end
       @db.results_as_hash = true
-      if fp["Padding"] then
-        sql = "SELECT * FROM fingerprints WHERE dynamic = ? and padding = ? and main_id = ?"
-        stm = @db.prepare sql
-        stm.bind_params fp["Dynamic"], fp["Padding"], fp["MainID"]
-      else
-        sql = "SELECT * FROM fingerprints WHERE dynamic = ? and padding is null and main_id = ?"
-        stm = @db.prepare sql
-        stm.bind_params fp["Dynamic"], fp["MainID"]
+      # New Method
+      # Go through all the fingerprints and retrieve the common IDs of each signal
+      # Count how many match to how many didn't match
+      target_total = fp["Common"].count
+      fingerprints = Hash.new
+      sql = "SELECT fingerprint_id, id FROM common ORDER BY fingerprint_id"
+      r = @db.execute sql
+      r.each do |row|
+        if not fingerprints.has_key? row["fingerprint_id"] then
+          fingerprints[row["fingerprint_id"]] = Hash.new
+          fingerprints[row["fingerprint_id"]]["Total"] = 1
+          fingerprints[row["fingerprint_id"]]["Matched"] = 0
+        else
+          fingerprints[row["fingerprint_id"]]["Total"] += 1
+        end
+        fp["Common"].each do |common|
+          if row["id"] == common["ID"] then
+            fingerprints[row["fingerprint_id"]]["Matched"] += 1
+          end
+        end
+      end      
+      best_id = 0
+      best_score = 0
+      fingerprints.each do |id, m|
+        fp_signals_didnt_match = m["Total"] - m["Matched"]
+        target_signals_didnt_match = target_total - m["Matched"]
+        deduction = 100 / (m["Total"] + target_total)
+        score = 100 - ( (deduction * fp_signals_didnt_match) + (deduction * target_signals_didnt_match) )
+        if score > best_score then
+          best_score = score
+          best_id = id
+        end
       end
-      stm.execute
+      fp["Confidence"] = 0
+      if best_id > 0 then
+        fp["Confidence"] = best_score
+        sql = "SELECT make,model,year,trim FROM fingerprints WHERE idx = ?"
+        stm = @db.prepare sql
+        stm.bind_params best_id
+        r = stm.execute
+        row = r.next
+        fp["Make"] = row["make"]
+        fp["Model"] = row["model"]
+        fp["Year"] = row["year"]
+        fp["Trim"] = row["trim"]
+      end
+      fp
     end
 
     # Retrieve all the fingerprints
