@@ -45,7 +45,7 @@ $ c0f --help
 == Using c0f
 
 First you will want to use candump from can-utils (on linux) to record some CAN traffic from
-a vehicle that is turned completed on (not just in Auxilary mode).  You will want at least 2000
+a vehicle that is turned completed on (not just in Auxiliary mode).  You will want at least 2000
 packets...which should only take a few seconds but more won't hurt anything.  Have candump
 log this to a file.  For instance
 
